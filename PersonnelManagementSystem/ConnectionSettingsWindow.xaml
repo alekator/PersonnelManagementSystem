@@ -1,0 +1,51 @@
+﻿<Window x:Class="PersonnelManagementSystem.ConnectionSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Настройки подключения" Height="300" Width="400" WindowStartupLocation="CenterScreen">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Сервер -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Сервер:" FontWeight="Bold"/>
+            <TextBox x:Name="TxtServer" ToolTip="Введите имя SQL сервера (например, localhost или localhost\SQLEXPRESS)" />
+            <TextBlock Text="Пример: localhost\SQLEXPRESS" FontSize="12" Foreground="Gray" Margin="5,0,0,0"/>
+        </StackPanel>
+
+        <!-- База данных -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <TextBlock Text="База данных:" FontWeight="Bold"/>
+            <TextBox x:Name="TxtDatabase" ToolTip="Введите имя базы данных (например, PersonnelDB)" />
+            <TextBlock Text="Пример: PersonnelDB" FontSize="12" Foreground="Gray" Margin="5,0,0,0"/>
+        </StackPanel>
+
+        <!-- Метод аутентификации -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,10">
+            <TextBlock Text="Метод аутентификации:" FontWeight="Bold"/>
+            <ComboBox x:Name="CmbAuthentication" ToolTip="Выберите метод аутентификации">
+                <ComboBoxItem Content="Windows Authentication" IsSelected="True"/>
+                <ComboBoxItem Content="SQL Server Authentication"/>
+            </ComboBox>
+            <TextBlock Text="Windows Authentication: используйте текущую учётную запись." FontSize="12" Foreground="Gray" Margin="5,0,0,0"/>
+        </StackPanel>
+
+        <!-- Учетные данные для SQL Server Authentication -->
+        <StackPanel Grid.Row="3" Margin="0,0,0,10" Visibility="Collapsed" x:Name="StackCredentials">
+            <TextBlock Text="Пользователь:" FontWeight="Bold"/>
+            <TextBox x:Name="TxtUsername" ToolTip="Введите имя пользователя для SQL Server (например, sa)" />
+            <TextBlock Text="Пример: sa" FontSize="12" Foreground="Gray" Margin="5,0,0,0"/>
+
+            <TextBlock Text="Пароль:" FontWeight="Bold" Margin="10,5,0,0"/>
+            <PasswordBox x:Name="TxtPassword" ToolTip="Введите пароль для SQL Server" />
+        </StackPanel>
+
+        <!-- Кнопка сохранения -->
+        <Button Content="Сохранить" Grid.Row="4" Width="100" Height="30" HorizontalAlignment="Right" Click="BtnSave_Click"/>
+    </Grid>
+</Window>

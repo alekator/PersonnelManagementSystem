@@ -1,26 +1,56 @@
 ﻿using System;
 using System.Data;
 using System.Data.SqlClient;
-using System.Configuration;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Класс для хранения строки подключения к базе данных.
+/// Строка подключения задаётся через интерфейс приложения.
+/// </summary>
+public static class DatabaseSettings
+{
+    public static string ConnectionString { get; set; } = ""; // Строка подключения задаётся через приложение
+}
+
+
+/// <summary>
+/// Класс для работы с базой данных.
+/// Предоставляет методы для выполнения SQL-запросов.
+/// </summary>
 public class Database
 {
     private readonly string connectionString;
 
-    public Database()
+    public Database(string connectionString)
     {
-        // Получаем строку подключения из app.config
-        connectionString = ConfigurationManager.ConnectionStrings["PersonnelDB"].ConnectionString;
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Строка подключения к базе данных не задана. Настройте подключение перед использованием.");
+        }
+
+        this.connectionString = connectionString;
+
+        try
+        {
+            using (var connection = new SqlConnection(this.connectionString))
+            {
+                connection.Open(); // Тестовое подключение
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Не удалось подключиться к базе данных с указанной строкой подключения. {ex.Message}");
+        }
     }
 
     /// <summary>
-    /// Выполняет SELECT-запрос и возвращает DataTable с результатами.
+    /// Асинхронно выполняет SELECT-запрос и возвращает DataTable с результатами.
     /// </summary>
-    public DataTable ExecuteSelectQuery(string query, SqlParameter[] parameters = null)
+    public async Task<DataTable> ExecuteSelectQueryAsync(string query, SqlParameter[] parameters = null)
     {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
+            await connection.OpenAsync();
             using (SqlCommand command = new SqlCommand(query, connection))
             {
                 if (parameters != null)
@@ -28,13 +58,16 @@ public class Database
                     command.Parameters.AddRange(parameters);
                 }
 
-                SqlDataAdapter adapter = new SqlDataAdapter(command);
-                DataTable dataTable = new DataTable();
-                adapter.Fill(dataTable);
-                return dataTable;
+                using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                {
+                    DataTable dataTable = new DataTable();
+                    await Task.Run(() => adapter.Fill(dataTable));
+                    return dataTable;
+                }
             }
         }
     }
+
 
     /// <summary>
     /// Выполняет INSERT, UPDATE или DELETE запрос.
@@ -75,4 +108,25 @@ public class Database
             }
         }
     }
+
+    /// <summary>
+    /// Выполняет SQL-запрос и возвращает первый столбец первой строки результата.
+    /// </summary>
+    public async Task<object> ExecuteScalarAsync(string query, SqlParameter[] parameters = null)
+    {
+        using (SqlConnection connection = new SqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            using (SqlCommand command = new SqlCommand(query, connection))
+            {
+                if (parameters != null)
+                {
+                    command.Parameters.AddRange(parameters);
+                }
+
+                return await command.ExecuteScalarAsync();
+            }
+        }
+    }
+
 }
