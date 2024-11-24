@@ -3,6 +3,9 @@ using System.Windows;
 
 namespace PersonnelManagementSystem
 {
+    /// <summary>
+    /// Окно для добавления или редактирования данных организации.
+    /// </summary>
     public partial class OrganizationEditWindow : Window
     {
         public string OrganizationName { get; private set; }
@@ -18,6 +21,10 @@ namespace PersonnelManagementSystem
             TxtPhone.Text = phone;
         }
 
+
+        /// <summary>
+        /// Сохраняет данные, введённые пользователем, и закрывает окно.
+        /// </summary>
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(TxtName.Text) ||
@@ -36,6 +43,9 @@ namespace PersonnelManagementSystem
             Close();
         }
 
+        /// <summary>
+        /// Закрывает окно без сохранения изменений.
+        /// </summary>
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;

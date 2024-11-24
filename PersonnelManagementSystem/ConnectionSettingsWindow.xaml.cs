@@ -3,21 +3,27 @@ using System.Windows;
 
 namespace PersonnelManagementSystem
 {
+    /// <summary>
+    /// Окно настроек подключения к базе данных.
+    /// </summary>
+
     public partial class ConnectionSettingsWindow : Window
     {
         public ConnectionSettingsWindow()
         {
             InitializeComponent();
             CmbAuthentication.SelectionChanged += CmbAuthentication_SelectionChanged;
-            // Загружаем последние введённые данные
             TxtServer.Text = Properties.Settings.Default.LastServer;
             TxtDatabase.Text = Properties.Settings.Default.LastDatabase;
         }
 
+        /// <summary>
+        /// Обработчик изменения типа аутентификации.
+        /// Отображает или скрывает поля для ввода логина и пароля при выборе соответствующего типа.
+        /// </summary>
         private void CmbAuthentication_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            // Показать/скрыть поля для ввода логина и пароля при выборе SQL Server Authentication
-            if (CmbAuthentication.SelectedIndex == 1) // SQL Server Authentication
+            if (CmbAuthentication.SelectedIndex == 1)
             {
                 StackCredentials.Visibility = Visibility.Visible;
             }
@@ -27,6 +33,10 @@ namespace PersonnelManagementSystem
             }
         }
 
+        /// <summary>
+        /// Сохраняет настройки подключения к базе данных.
+        /// Валидирует введенные данные и формирует строку подключения в зависимости от выбранного типа аутентификации.
+        /// </summary>
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -45,12 +55,12 @@ namespace PersonnelManagementSystem
 
                 string connectionString;
 
-                if (CmbAuthentication.SelectedIndex == 0) // Windows Authentication
+                if (CmbAuthentication.SelectedIndex == 0)
                 {
                     connectionString = $"Data Source={server};Initial Catalog={database};Integrated Security=True;Connection Timeout=60;";
                     Logger.WriteLog($"BtnSave_Click: Используется Windows Authentication. Строка подключения: {connectionString}");
                 }
-                else // SQL Server Authentication
+                else
                 {
                     string username = TxtUsername.Text.Trim();
                     string password = TxtPassword.Password;
@@ -66,11 +76,9 @@ namespace PersonnelManagementSystem
                     Logger.WriteLog($"BtnSave_Click: Используется SQL Server Authentication. Строка подключения: {connectionString}");
                 }
 
-                // Сохраняем строку подключения
                 DatabaseSettings.ConnectionString = connectionString;
                 Logger.WriteLog("BtnSave_Click: Строка подключения успешно сохранена.");
 
-                // Сохраняем последние введённые сервер и базу данных
                 Properties.Settings.Default.LastServer = server;
                 Properties.Settings.Default.LastDatabase = database;
                 Properties.Settings.Default.Save();
@@ -90,7 +98,6 @@ namespace PersonnelManagementSystem
         }
     }
 
-    // Глобальный класс для хранения строки подключения
     public static class DatabaseSettings
     {
         public static string ConnectionString { get; set; }

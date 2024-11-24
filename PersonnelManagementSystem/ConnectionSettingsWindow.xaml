@@ -15,7 +15,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="Сервер:" FontWeight="Bold"/>
             <TextBox x:Name="TxtServer" ToolTip="Введите имя SQL сервера (например, localhost или localhost\SQLEXPRESS)" />
-            <TextBlock Text="Пример: localhost\\SQLEXPRESS" FontSize="12" Foreground="Gray" Margin="5,0,0,0"/>
+            <TextBlock Text="Пример: localhost\SQLEXPRESS" FontSize="12" Foreground="Gray" Margin="5,0,0,0"/>
         </StackPanel>
 
         <!-- База данных -->

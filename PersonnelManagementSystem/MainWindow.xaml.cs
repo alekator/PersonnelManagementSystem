@@ -11,7 +11,7 @@ using System.Windows.Media.Imaging;
 namespace PersonnelManagementSystem
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Класс основного окна приложения
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -20,11 +20,12 @@ namespace PersonnelManagementSystem
         public MainWindow()
         {
             InitializeComponent();
-            this.Loaded += MainWindow_Load; // Подключаем событие загрузки окна
+            this.Loaded += MainWindow_Load;
         }
 
         /// <summary>
-        /// Событие загрузки главного окна.
+        /// Выполняется при загрузке главного окна.
+        /// Проверяет строку подключения, инициирует базу данных и загружает список организаций.
         /// </summary>
         private async void MainWindow_Load(object sender, RoutedEventArgs e)
         {
@@ -48,7 +49,7 @@ namespace PersonnelManagementSystem
                     using (SqlConnection connection = new SqlConnection(DatabaseSettings.ConnectionString))
                     {
                         Logger.WriteLog("MainWindow_Load: Попытка подключения к базе данных...");
-                        await connection.OpenAsync(); // Асинхронное открытие соединения
+                        await connection.OpenAsync();
                         Logger.WriteLog("MainWindow_Load: Подключение успешно установлено.");
                         MessageBox.Show("Подключение к базе данных успешно установлено.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
@@ -57,7 +58,6 @@ namespace PersonnelManagementSystem
                     _database = new Database(DatabaseSettings.ConnectionString);
                     Logger.WriteLog("MainWindow_Load: Объект Database успешно инициализирован.");
 
-                    // Асинхронно загружаем данные организаций
                     DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
                     Logger.WriteLog($"MainWindow_Load: Загружено {organizations.Rows.Count} организаций из базы данных.");
                     LoadOrganizationsToUI(organizations);
@@ -87,6 +87,10 @@ namespace PersonnelManagementSystem
                 Logger.WriteLog("MainWindow_Load: Загрузка главного окна завершена.");
             }
         }
+
+        /// <summary>
+        /// Обновляет данные организаций и связанных сотрудников.
+        /// </summary>
         private async void BtnRefresh_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -111,6 +115,9 @@ namespace PersonnelManagementSystem
             }
         }
 
+        /// <summary>
+        /// Открывает окно настроек подключения.
+        /// </summary>
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
             ConnectionSettingsWindow settingsWindow = new ConnectionSettingsWindow();
@@ -119,14 +126,12 @@ namespace PersonnelManagementSystem
 
 
         /// <summary>
-        /// Загружает список организаций в интерфейс.
+        /// Отображает список организаций в интерфейсе.
         /// </summary>
-        /// <param name="organizations">Таблица с данными организаций.</param>
         private void LoadOrganizationsToUI(DataTable organizations)
         {
             try
             {
-                // Привязываем данные из DataTable к DataGrid
                 DataGridOrganizations.ItemsSource = organizations.DefaultView;
             }
             catch (Exception ex)
@@ -137,7 +142,7 @@ namespace PersonnelManagementSystem
         }
 
         /// <summary>
-        /// Обработчик события нажатия на кнопку "Добавить организацию".
+        /// Добавляет новую организацию.
         /// </summary>
         private async void BtnAddOrganization_Click(object sender, RoutedEventArgs e)
         {
@@ -157,7 +162,6 @@ namespace PersonnelManagementSystem
                     await _database.ExecuteNonQueryAsync(query, parameters);
                     Logger.WriteLog($"Организация добавлена: {editWindow.OrganizationName} ({editWindow.OrganizationAddress}, {editWindow.OrganizationPhone})");
 
-                    // Обновляем список организаций
                     DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
                     LoadOrganizationsToUI(organizations);
                 }
@@ -170,7 +174,9 @@ namespace PersonnelManagementSystem
         }
 
 
-
+        /// <summary>
+        /// Редактирует выбранную организацию.
+        /// </summary>
         private async void BtnEditOrganization_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
@@ -195,7 +201,6 @@ namespace PersonnelManagementSystem
                     await _database.ExecuteNonQueryAsync(query, parameters);
                     Logger.WriteLog($"Организация с ID {organizationId} обновлена: {editWindow.OrganizationName}");
 
-                    // Обновляем список организаций
                     DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
                     LoadOrganizationsToUI(organizations);
                 }
@@ -206,42 +211,47 @@ namespace PersonnelManagementSystem
             }
         }
 
+        /// <summary>
+        /// Удаляет выбранную организацию и её сотрудников.
+        /// </summary>
         private async void BtnDeleteOrganization_Click(object sender, RoutedEventArgs e)
-{
-    if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
-    {
-        try
         {
-            int organizationId = Convert.ToInt32(selectedRow["Id"]);
-            string orgName = selectedRow["Name"].ToString();
+            if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
+            {
+                try
+                {
+                    int organizationId = Convert.ToInt32(selectedRow["Id"]);
+                    string orgName = selectedRow["Name"].ToString();
 
-            string deleteEmployeesQuery = "DELETE FROM Employees WHERE OrganizationId = @OrgId";
-            string deleteOrganizationQuery = "DELETE FROM Organizations WHERE Id = @Id";
+                    string deleteEmployeesQuery = "DELETE FROM Employees WHERE OrganizationId = @OrgId";
+                    string deleteOrganizationQuery = "DELETE FROM Organizations WHERE Id = @Id";
 
-            var employeeParams = new[] { new SqlParameter("@OrgId", organizationId) };
-            var organizationParams = new[] { new SqlParameter("@Id", organizationId) };
+                    var employeeParams = new[] { new SqlParameter("@OrgId", organizationId) };
+                    var organizationParams = new[] { new SqlParameter("@Id", organizationId) };
 
-            await _database.ExecuteNonQueryAsync(deleteEmployeesQuery, employeeParams);
-            await _database.ExecuteNonQueryAsync(deleteOrganizationQuery, organizationParams);
+                    await _database.ExecuteNonQueryAsync(deleteEmployeesQuery, employeeParams);
+                    await _database.ExecuteNonQueryAsync(deleteOrganizationQuery, organizationParams);
 
-            Logger.WriteLog($"Удалена организация: {orgName} (ID: {organizationId}) вместе с её сотрудниками.");
+                    Logger.WriteLog($"Удалена организация: {orgName} (ID: {organizationId}) вместе с её сотрудниками.");
 
-            // Обновляем список организаций
-            DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
-            LoadOrganizationsToUI(organizations);
+                    DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
+                    LoadOrganizationsToUI(organizations);
+                }
+                catch (Exception ex)
+                {
+                    Logger.WriteLog($"Ошибка при удалении организации: {ex.Message}");
+                    MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Выберите организацию для удаления.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
-        catch (Exception ex)
-        {
-            Logger.WriteLog($"Ошибка при удалении организации: {ex.Message}");
-            MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-    else
-    {
-        MessageBox.Show("Выберите организацию для удаления.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
-}
 
+        /// <summary>
+        /// Выполняет поиск организаций по тексту в строке поиска.
+        /// </summary>
         private void TxtSearchOrganizations_KeyUp(object sender, KeyEventArgs e)
         {
             if (DataGridOrganizations.ItemsSource is DataView dataView)
@@ -252,7 +262,9 @@ namespace PersonnelManagementSystem
         }
 
 
-
+        /// <summary>
+        /// Обработчик события изменения выбранной строки в таблице организаций.
+        /// </summary>
         private void DataGridOrganizations_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
@@ -262,6 +274,9 @@ namespace PersonnelManagementSystem
             }
         }
 
+        /// <summary>
+        /// Загружает сотрудников, связанных с выбранной организацией.
+        /// </summary>
         private async void LoadEmployees(int organizationId)
         {
             try
@@ -285,7 +300,9 @@ namespace PersonnelManagementSystem
             }
         }
 
-
+        /// <summary>
+        /// Добавляет нового сотрудника в выбранную организацию.
+        /// </summary>
         private async void BtnAddEmployee_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedOrganization)
@@ -307,7 +324,6 @@ namespace PersonnelManagementSystem
                     await _database.ExecuteNonQueryAsync(query, parameters);
                     Logger.WriteLog($"Добавлен новый сотрудник: {editWindow.FirstName} {editWindow.LastName} ({editWindow.Position})");
 
-                    // Обновляем список сотрудников
                     LoadEmployees(organizationId);
                 }
             }
@@ -317,6 +333,9 @@ namespace PersonnelManagementSystem
             }
         }
 
+        /// <summary>
+        /// Редактирует данные выбранного сотрудника.
+        /// </summary>
         private async void BtnEditEmployee_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridEmployees.SelectedItem is DataRowView selectedEmployee)
@@ -354,6 +373,9 @@ namespace PersonnelManagementSystem
             }
         }
 
+        /// <summary>
+        /// Удаляет выбранного сотрудника.
+        /// </summary>
         private void BtnDeleteEmployee_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridEmployees.SelectedItem is DataRowView selectedEmployee)
@@ -376,11 +398,14 @@ namespace PersonnelManagementSystem
                 }
             }
         }
+
+        /// <summary>
+        /// Загрузка и обрезка фотографии сотрудника перед сохранением в базу данных.
+        /// </summary>
         private void BtnUploadPhoto_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridEmployees.SelectedItem is DataRowView selectedEmployee)
             {
-                // Открытие диалога для выбора файла
                 Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog
                 {
                     Filter = "Image Files|*.jpg;*.jpeg;*.png;*.bmp"
@@ -390,7 +415,6 @@ namespace PersonnelManagementSystem
                 {
                     try
                     {
-                        // Чтение изображения из файла
                         using (var stream = new FileStream(openFileDialog.FileName, FileMode.Open, FileAccess.Read))
                         {
                             BitmapImage originalImage = new BitmapImage();
@@ -399,16 +423,12 @@ namespace PersonnelManagementSystem
                             originalImage.CacheOption = BitmapCacheOption.OnLoad;
                             originalImage.EndInit();
 
-                            // Обрезка изображения
-                            CroppedBitmap croppedImage = CropToFitAspect(originalImage, 3, 4); // Пропорции 3:4
+                            CroppedBitmap croppedImage = CropToFitAspect(originalImage, 3, 4);
 
-                            // Сохранение обрезанного изображения в байтовый массив
                             byte[] photoBytes = GetImageBytes(croppedImage);
 
-                            // Получение ID сотрудника
                             int employeeId = Convert.ToInt32(selectedEmployee["Id"]);
 
-                            // Обновление фото в базе данных
                             string query = "UPDATE Employees SET Photo = @Photo WHERE Id = @Id";
                             var parameters = new[]
                             {
@@ -419,7 +439,6 @@ namespace PersonnelManagementSystem
                             _database.ExecuteNonQuery(query, parameters);
                             Logger.WriteLog($"Фотография сотрудника с ID {employeeId} обновлена.");
 
-                            // Отображение загруженного фото
                             EmployeePhoto.Source = croppedImage;
                         }
                     }
@@ -437,12 +456,8 @@ namespace PersonnelManagementSystem
         }
 
         /// <summary>
-        /// Обрезает изображение до заданных пропорций.
+        /// Обрезает изображение до заданных пропорций (3/4).
         /// </summary>
-        /// <param name="source">Исходное изображение.</param>
-        /// <param name="targetWidthRatio">Ширина пропорции.</param>
-        /// <param name="targetHeightRatio">Высота пропорции.</param>
-        /// <returns>Обрезанное изображение.</returns>
         private CroppedBitmap CropToFitAspect(BitmapImage source, int targetWidthRatio, int targetHeightRatio)
         {
             double sourceWidth = source.PixelWidth;
@@ -455,7 +470,6 @@ namespace PersonnelManagementSystem
 
             if (sourceAspectRatio > targetAspectRatio)
             {
-                // Изображение шире, чем нужно
                 cropHeight = (int)sourceHeight;
                 cropWidth = (int)(sourceHeight * targetAspectRatio);
                 offsetX = (int)((sourceWidth - cropWidth) / 2);
@@ -463,22 +477,18 @@ namespace PersonnelManagementSystem
             }
             else
             {
-                // Изображение выше, чем нужно
                 cropWidth = (int)sourceWidth;
                 cropHeight = (int)(sourceWidth / targetAspectRatio);
                 offsetX = 0;
                 offsetY = (int)((sourceHeight - cropHeight) / 2);
             }
 
-            // Возвращаем обрезанное изображение
             return new CroppedBitmap(source, new Int32Rect(offsetX, offsetY, cropWidth, cropHeight));
         }
 
         /// <summary>
         /// Преобразует изображение в байтовый массив.
         /// </summary>
-        /// <param name="source">Изображение для преобразования.</param>
-        /// <returns>Байтовый массив изображения.</returns>
         private byte[] GetImageBytes(BitmapSource source)
         {
             using (MemoryStream stream = new MemoryStream())
@@ -510,7 +520,6 @@ namespace PersonnelManagementSystem
                 }
                 else
                 {
-                    // Если фото нет, очищаем Image
                     EmployeePhoto.Source = null;
                 }
             }
@@ -526,21 +535,22 @@ namespace PersonnelManagementSystem
         }
 
 
-
+        /// <summary>
+        /// Выполняет стресс-тест добавления: 10 организаций по 100 сотрудников в каждой, в базу данных.
+        /// </summary>
         private async void BtnStressTest_Click(object sender, RoutedEventArgs e)
         {
-            StressTestLog.Clear(); // Очистить лог перед запуском
+            StressTestLog.Clear();
             string startMessage = "Начало стресс-теста...";
             StressTestLog.AppendText(startMessage + "\n");
             Logger.WriteLog(startMessage);
 
-            for (int i = 1; i <= 10; i++) // 10 организаций
+            for (int i = 1; i <= 10; i++)
             {
                 string orgName = $"Организация {i}";
                 string orgAddress = $"Адрес {i}";
                 string orgPhone = $"123-456-78{i:D2}";
 
-                // SQL-запрос с OUTPUT INSERTED.Id для получения сгенерированного ID
                 string insertOrgQuery = "INSERT INTO Organizations (Name, Address, Phone) OUTPUT INSERTED.Id VALUES (@Name, @Address, @Phone)";
                 var orgParams = new[]
                 {
@@ -551,14 +561,13 @@ namespace PersonnelManagementSystem
 
                 try
                 {
-                    // Получаем ID новой организации
                     int organizationId = (int)await _database.ExecuteScalarAsync(insertOrgQuery, orgParams);
 
                     string orgAddedMessage = $"Добавлена организация: {orgName}";
                     StressTestLog.AppendText(orgAddedMessage + "\n");
                     Logger.WriteLog(orgAddedMessage);
 
-                    for (int j = 1; j <= 100; j++) // 100 сотрудников
+                    for (int j = 1; j <= 100; j++)
                     {
                         string empName = $"Имя {j}";
                         string empLastName = $"Фамилия {j}";
@@ -587,7 +596,6 @@ namespace PersonnelManagementSystem
                     Logger.WriteLog(errorMessage);
                 }
 
-                // Прокрутить лог вниз
                 StressTestLog.ScrollToEnd();
             }
 
@@ -596,15 +604,20 @@ namespace PersonnelManagementSystem
             Logger.WriteLog(finishMessage);
         }
 
-
+        /// <summary>
+        /// Обработчик события изменения текста в логе стресс-теста.
+        /// </summary>
         private void StressTestLog_TextChanged(object sender, TextChangedEventArgs e)
         {
-
+            // Можно чет придумать на будущее
         }
 
+        /// <summary>
+        /// Обработчик события изменения текста в поле поиска организаций.
+        /// </summary>
         private void TxtSearchOrganizations_TextChanged(object sender, TextChangedEventArgs e)
         {
-
+            // Можно чет придумать на будущее
         }
     }
 }

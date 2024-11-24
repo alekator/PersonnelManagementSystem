@@ -3,6 +3,9 @@ using System.Windows;
 
 namespace PersonnelManagementSystem
 {
+    /// <summary>
+    /// Окно редактирования или добавления данных сотрудника.
+    /// </summary>
     public partial class EmployeeEditWindow : Window
     {
         public string FirstName { get; private set; }

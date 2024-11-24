@@ -3,11 +3,20 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Класс для хранения строки подключения к базе данных.
+/// Строка подключения задаётся через интерфейс приложения.
+/// </summary>
 public static class DatabaseSettings
 {
     public static string ConnectionString { get; set; } = ""; // Строка подключения задаётся через приложение
 }
 
+
+/// <summary>
+/// Класс для работы с базой данных.
+/// Предоставляет методы для выполнения SQL-запросов.
+/// </summary>
 public class Database
 {
     private readonly string connectionString;
