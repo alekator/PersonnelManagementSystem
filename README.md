@@ -58,11 +58,5 @@ The Personnel Management System is a Windows application designed to manage a li
 ### Logging
 - Logs every critical action (e.g., adding/deleting/updating data, database operations, and error handling) to a file for transparency and debugging.
 
-## Screenshots
-- (Add screenshots of the application here if needed)
-
-## Contribution
-Feel free to contribute to this project by submitting pull requests or raising issues for bug fixes and enhancements.
-
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
