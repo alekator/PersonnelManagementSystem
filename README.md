@@ -45,6 +45,14 @@ The Personnel Management System is a Windows application designed to manage a li
 - `EmployeeEditWindow.xaml` and `.cs`: Interface and logic for managing employee details.
 - `OrganizationEditWindow.xaml` and `.cs`: Interface and logic for managing organization details.
 
+## Database Setup
+1. Open SQL Server Management Studio (SSMS).
+2. Connect to your database server.
+3. Right-click on **Databases** in the Object Explorer and select **Restore Database...**.
+4. Choose **Device**, click **Add**, and select the provided `.bak` file.
+5. Follow the prompts to restore the database.
+6. Update the connection string in the application if necessary.
+
 ## Features in Detail
 ### Real-Time Search
 - Implements dynamic filtering for both organizations and employees based on input in the search text fields.
