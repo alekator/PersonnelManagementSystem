@@ -1,5 +1,6 @@
 
 # Personnel Management System
+![image](https://github.com/user-attachments/assets/1f942007-09b2-4ecf-b174-66dfc5602865)
 
 ## Project Description
 The Personnel Management System is a Windows application designed to manage a list of personnel and organizations. It allows adding, editing, and deleting organizations and employees, as well as uploading employee photos. The application supports connecting to an MS SQL database and provides an intuitive interface for managing data.
