@@ -34,13 +34,14 @@ public class Database
         }
     }
 
-/// <summary>
-/// Выполняет SELECT-запрос и возвращает DataTable с результатами.
-/// </summary>
-public DataTable ExecuteSelectQuery(string query, SqlParameter[] parameters = null)
+    /// <summary>
+    /// Асинхронно выполняет SELECT-запрос и возвращает DataTable с результатами.
+    /// </summary>
+    public async Task<DataTable> ExecuteSelectQueryAsync(string query, SqlParameter[] parameters = null)
     {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
+            await connection.OpenAsync();
             using (SqlCommand command = new SqlCommand(query, connection))
             {
                 if (parameters != null)
@@ -48,13 +49,16 @@ public DataTable ExecuteSelectQuery(string query, SqlParameter[] parameters = nu
                     command.Parameters.AddRange(parameters);
                 }
 
-                SqlDataAdapter adapter = new SqlDataAdapter(command);
-                DataTable dataTable = new DataTable();
-                adapter.Fill(dataTable);
-                return dataTable;
+                using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                {
+                    DataTable dataTable = new DataTable();
+                    await Task.Run(() => adapter.Fill(dataTable));
+                    return dataTable;
+                }
             }
         }
     }
+
 
     /// <summary>
     /// Выполняет INSERT, UPDATE или DELETE запрос.

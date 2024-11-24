@@ -25,7 +25,7 @@ namespace PersonnelManagementSystem
         /// <summary>
         /// Событие загрузки главного окна.
         /// </summary>
-        private void MainWindow_Load(object sender, RoutedEventArgs e)
+        private async void MainWindow_Load(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace PersonnelManagementSystem
                     using (SqlConnection connection = new SqlConnection(DatabaseSettings.ConnectionString))
                     {
                         Logger.WriteLog("MainWindow_Load: Попытка подключения к базе данных...");
-                        connection.Open();
+                        await connection.OpenAsync(); // Асинхронное открытие соединения
                         Logger.WriteLog("MainWindow_Load: Подключение успешно установлено.");
                         MessageBox.Show("Подключение к базе данных успешно установлено.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
@@ -56,7 +56,8 @@ namespace PersonnelManagementSystem
                     _database = new Database(DatabaseSettings.ConnectionString);
                     Logger.WriteLog("MainWindow_Load: Объект Database успешно инициализирован.");
 
-                    DataTable organizations = _database.ExecuteSelectQuery("SELECT * FROM Organizations");
+                    // Асинхронно загружаем данные организаций
+                    DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
                     Logger.WriteLog($"MainWindow_Load: Загружено {organizations.Rows.Count} организаций из базы данных.");
                     LoadOrganizationsToUI(organizations);
                 }
@@ -86,10 +87,6 @@ namespace PersonnelManagementSystem
             }
         }
 
-
-
-
-
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
             ConnectionSettingsWindow settingsWindow = new ConnectionSettingsWindow();
@@ -118,56 +115,67 @@ namespace PersonnelManagementSystem
         /// <summary>
         /// Обработчик события нажатия на кнопку "Добавить организацию".
         /// </summary>
-        private void BtnAddOrganization_Click(object sender, RoutedEventArgs e)
+        private async void BtnAddOrganization_Click(object sender, RoutedEventArgs e)
         {
-            try
+            var editWindow = new OrganizationEditWindow();
+            if (editWindow.ShowDialog() == true)
             {
                 string query = "INSERT INTO Organizations (Name, Address, Phone) VALUES (@Name, @Address, @Phone)";
-                var random = new Random();
                 var parameters = new[]
                 {
-            new System.Data.SqlClient.SqlParameter("@Name", $"Организация {random.Next(1, 1000)}"),
-            new System.Data.SqlClient.SqlParameter("@Address", $"Адрес {random.Next(1, 100)}"),
-            new System.Data.SqlClient.SqlParameter("@Phone", $"123-{random.Next(100, 999)}-{random.Next(1000, 9999)}")
+            new SqlParameter("@Name", editWindow.OrganizationName),
+            new SqlParameter("@Address", editWindow.OrganizationAddress),
+            new SqlParameter("@Phone", editWindow.OrganizationPhone)
         };
 
-                _database.ExecuteNonQuery(query, parameters);
-                Logger.WriteLog("Добавлена новая организация.");
+                await _database.ExecuteNonQueryAsync(query, parameters);
+                Logger.WriteLog($"Добавлена новая организация: {editWindow.OrganizationName}");
 
                 // Обновляем список организаций
-                DataTable organizations = _database.ExecuteSelectQuery("SELECT * FROM Organizations");
+                DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
                 LoadOrganizationsToUI(organizations);
             }
-            catch (Exception ex)
-            {
-                Logger.WriteLog($"Ошибка добавления организации: {ex.Message}");
-                MessageBox.Show($"Ошибка добавления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
         }
-        private void BtnEditOrganization_Click(object sender, RoutedEventArgs e)
+
+
+        private async void BtnEditOrganization_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
             {
                 int organizationId = Convert.ToInt32(selectedRow["Id"]);
-                string newName = "Обновленная Организация";
-                string query = "UPDATE Organizations SET Name = @Name WHERE Id = @Id";
+                string currentName = selectedRow["Name"].ToString();
+                string currentAddress = selectedRow["Address"].ToString();
+                string currentPhone = selectedRow["Phone"].ToString();
 
-                var parameters = new[]
+                var editWindow = new OrganizationEditWindow(currentName, currentAddress, currentPhone);
+                if (editWindow.ShowDialog() == true)
                 {
-            new System.Data.SqlClient.SqlParameter("@Name", newName),
-            new System.Data.SqlClient.SqlParameter("@Id", organizationId)
-        };
+                    string query = "UPDATE Organizations SET Name = @Name, Address = @Address, Phone = @Phone WHERE Id = @Id";
+                    var parameters = new[]
+                    {
+                new SqlParameter("@Name", editWindow.OrganizationName),
+                new SqlParameter("@Address", editWindow.OrganizationAddress),
+                new SqlParameter("@Phone", editWindow.OrganizationPhone),
+                new SqlParameter("@Id", organizationId)
+            };
 
-                _database.ExecuteNonQuery(query, parameters);
-                Logger.WriteLog($"Организация с ID {organizationId} обновлена.");
+                    await _database.ExecuteNonQueryAsync(query, parameters);
+                    Logger.WriteLog($"Организация с ID {organizationId} обновлена: {editWindow.OrganizationName}");
 
-                // Обновляем список организаций
-                DataTable organizations = _database.ExecuteSelectQuery("SELECT * FROM Organizations");
-                LoadOrganizationsToUI(organizations);
+                    // Обновляем список организаций
+                    DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
+                    LoadOrganizationsToUI(organizations);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Выберите организацию для редактирования.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
-        private void BtnDeleteOrganization_Click(object sender, RoutedEventArgs e)
+
+
+        private async void BtnDeleteOrganization_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
             {
@@ -176,17 +184,18 @@ namespace PersonnelManagementSystem
 
                 var parameters = new[]
                 {
-            new System.Data.SqlClient.SqlParameter("@Id", organizationId)
+            new SqlParameter("@Id", organizationId)
         };
 
-                _database.ExecuteNonQuery(query, parameters);
+                await _database.ExecuteNonQueryAsync(query, parameters);
                 Logger.WriteLog($"Организация с ID {organizationId} удалена.");
 
                 // Обновляем список организаций
-                DataTable organizations = _database.ExecuteSelectQuery("SELECT * FROM Organizations");
+                DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
                 LoadOrganizationsToUI(organizations);
             }
         }
+
         private void DataGridOrganizations_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
@@ -196,25 +205,29 @@ namespace PersonnelManagementSystem
             }
         }
 
-        private void LoadEmployees(int organizationId)
+        private async void LoadEmployees(int organizationId)
         {
             try
             {
+                Logger.WriteLog($"LoadEmployees: Загружаем сотрудников для организации ID={organizationId}.");
+
                 string query = "SELECT Id, FirstName, LastName, Position, Photo FROM Employees WHERE OrganizationId = @OrganizationId";
                 var parameters = new[]
                 {
-            new System.Data.SqlClient.SqlParameter("@OrganizationId", organizationId)
+            new SqlParameter("@OrganizationId", organizationId)
         };
 
-                DataTable employees = _database.ExecuteSelectQuery(query, parameters);
+                DataTable employees = await _database.ExecuteSelectQueryAsync(query, parameters);
+                Logger.WriteLog($"LoadEmployees: Загружено {employees.Rows.Count} сотрудников.");
                 DataGridEmployees.ItemsSource = employees.DefaultView;
             }
             catch (Exception ex)
             {
-                Logger.WriteLog($"Ошибка загрузки сотрудников: {ex.Message}");
+                Logger.WriteLog($"LoadEmployees: Ошибка загрузки сотрудников: {ex.Message}");
                 MessageBox.Show($"Ошибка загрузки сотрудников: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
 
         private void BtnAddEmployee_Click(object sender, RoutedEventArgs e)
         {
