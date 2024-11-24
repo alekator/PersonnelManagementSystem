@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 namespace PersonnelManagementSystem
@@ -86,6 +87,29 @@ namespace PersonnelManagementSystem
                 Logger.WriteLog("MainWindow_Load: Загрузка главного окна завершена.");
             }
         }
+        private async void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Logger.WriteLog("Обновление данных началось...");
+                DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
+                LoadOrganizationsToUI(organizations);
+
+                if (DataGridOrganizations.SelectedItem is DataRowView selectedOrganization)
+                {
+                    int organizationId = Convert.ToInt32(selectedOrganization["Id"]);
+                    DataTable employees = await _database.ExecuteSelectQueryAsync("SELECT * FROM Employees WHERE OrganizationId = @OrgId",
+                        new[] { new SqlParameter("@OrgId", organizationId) });
+                    DataGridEmployees.ItemsSource = employees.DefaultView;
+                }
+                Logger.WriteLog("Обновление данных завершено.");
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLog($"Ошибка при обновлении данных: {ex.Message}");
+                MessageBox.Show($"Ошибка при обновлении данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -117,25 +141,34 @@ namespace PersonnelManagementSystem
         /// </summary>
         private async void BtnAddOrganization_Click(object sender, RoutedEventArgs e)
         {
-            var editWindow = new OrganizationEditWindow();
-            if (editWindow.ShowDialog() == true)
+            try
             {
-                string query = "INSERT INTO Organizations (Name, Address, Phone) VALUES (@Name, @Address, @Phone)";
-                var parameters = new[]
+                var editWindow = new OrganizationEditWindow();
+                if (editWindow.ShowDialog() == true)
                 {
-            new SqlParameter("@Name", editWindow.OrganizationName),
-            new SqlParameter("@Address", editWindow.OrganizationAddress),
-            new SqlParameter("@Phone", editWindow.OrganizationPhone)
-        };
+                    string query = "INSERT INTO Organizations (Name, Address, Phone) VALUES (@Name, @Address, @Phone)";
+                    var parameters = new[]
+                    {
+                new SqlParameter("@Name", editWindow.OrganizationName),
+                new SqlParameter("@Address", editWindow.OrganizationAddress),
+                new SqlParameter("@Phone", editWindow.OrganizationPhone)
+            };
 
-                await _database.ExecuteNonQueryAsync(query, parameters);
-                Logger.WriteLog($"Добавлена новая организация: {editWindow.OrganizationName}");
+                    await _database.ExecuteNonQueryAsync(query, parameters);
+                    Logger.WriteLog($"Организация добавлена: {editWindow.OrganizationName} ({editWindow.OrganizationAddress}, {editWindow.OrganizationPhone})");
 
-                // Обновляем список организаций
-                DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
-                LoadOrganizationsToUI(organizations);
+                    // Обновляем список организаций
+                    DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
+                    LoadOrganizationsToUI(organizations);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLog($"Ошибка добавления организации: {ex.Message}");
+                MessageBox.Show($"Ошибка добавления организации: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
 
 
         private async void BtnEditOrganization_Click(object sender, RoutedEventArgs e)
@@ -173,28 +206,52 @@ namespace PersonnelManagementSystem
             }
         }
 
-
-
         private async void BtnDeleteOrganization_Click(object sender, RoutedEventArgs e)
+{
+    if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
+    {
+        try
         {
-            if (DataGridOrganizations.SelectedItem is DataRowView selectedRow)
+            int organizationId = Convert.ToInt32(selectedRow["Id"]);
+            string orgName = selectedRow["Name"].ToString();
+
+            string deleteEmployeesQuery = "DELETE FROM Employees WHERE OrganizationId = @OrgId";
+            string deleteOrganizationQuery = "DELETE FROM Organizations WHERE Id = @Id";
+
+            var employeeParams = new[] { new SqlParameter("@OrgId", organizationId) };
+            var organizationParams = new[] { new SqlParameter("@Id", organizationId) };
+
+            await _database.ExecuteNonQueryAsync(deleteEmployeesQuery, employeeParams);
+            await _database.ExecuteNonQueryAsync(deleteOrganizationQuery, organizationParams);
+
+            Logger.WriteLog($"Удалена организация: {orgName} (ID: {organizationId}) вместе с её сотрудниками.");
+
+            // Обновляем список организаций
+            DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
+            LoadOrganizationsToUI(organizations);
+        }
+        catch (Exception ex)
+        {
+            Logger.WriteLog($"Ошибка при удалении организации: {ex.Message}");
+            MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    else
+    {
+        MessageBox.Show("Выберите организацию для удаления.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+}
+
+        private void TxtSearchOrganizations_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (DataGridOrganizations.ItemsSource is DataView dataView)
             {
-                int organizationId = Convert.ToInt32(selectedRow["Id"]);
-                string query = "DELETE FROM Organizations WHERE Id = @Id";
-
-                var parameters = new[]
-                {
-            new SqlParameter("@Id", organizationId)
-        };
-
-                await _database.ExecuteNonQueryAsync(query, parameters);
-                Logger.WriteLog($"Организация с ID {organizationId} удалена.");
-
-                // Обновляем список организаций
-                DataTable organizations = await _database.ExecuteSelectQueryAsync("SELECT * FROM Organizations");
-                LoadOrganizationsToUI(organizations);
+                string filterText = TxtSearchOrganizations.Text.ToLower();
+                dataView.RowFilter = $"Convert(Id, 'System.String') LIKE '%{filterText}%' OR Name LIKE '%{filterText}%' OR Address LIKE '%{filterText}%' OR Phone LIKE '%{filterText}%'";
             }
         }
+
+
 
         private void DataGridOrganizations_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -229,55 +286,74 @@ namespace PersonnelManagementSystem
         }
 
 
-        private void BtnAddEmployee_Click(object sender, RoutedEventArgs e)
+        private async void BtnAddEmployee_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridOrganizations.SelectedItem is DataRowView selectedOrganization)
             {
                 int organizationId = Convert.ToInt32(selectedOrganization["Id"]);
 
-                string query = "INSERT INTO Employees (OrganizationId, FirstName, LastName, Position) VALUES (@OrganizationId, @FirstName, @LastName, @Position)";
-                var parameters = new[]
+                var editWindow = new EmployeeEditWindow();
+                if (editWindow.ShowDialog() == true)
                 {
-            new System.Data.SqlClient.SqlParameter("@OrganizationId", organizationId),
-            new System.Data.SqlClient.SqlParameter("@FirstName", "Иван"),
-            new System.Data.SqlClient.SqlParameter("@LastName", "Иванов"),
-            new System.Data.SqlClient.SqlParameter("@Position", "Менеджер")
-        };
+                    string query = "INSERT INTO Employees (OrganizationId, FirstName, LastName, Position) VALUES (@OrganizationId, @FirstName, @LastName, @Position)";
+                    var parameters = new[]
+                    {
+                new SqlParameter("@OrganizationId", organizationId),
+                new SqlParameter("@FirstName", editWindow.FirstName),
+                new SqlParameter("@LastName", editWindow.LastName),
+                new SqlParameter("@Position", editWindow.Position)
+            };
 
-                _database.ExecuteNonQuery(query, parameters);
-                Logger.WriteLog("Добавлен новый сотрудник.");
-                LoadEmployees(organizationId);
+                    await _database.ExecuteNonQueryAsync(query, parameters);
+                    Logger.WriteLog($"Добавлен новый сотрудник: {editWindow.FirstName} {editWindow.LastName} ({editWindow.Position})");
+
+                    // Обновляем список сотрудников
+                    LoadEmployees(organizationId);
+                }
             }
             else
             {
                 MessageBox.Show("Выберите организацию для добавления сотрудника.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
-        private void BtnEditEmployee_Click(object sender, RoutedEventArgs e)
+
+        private async void BtnEditEmployee_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridEmployees.SelectedItem is DataRowView selectedEmployee)
             {
                 int employeeId = Convert.ToInt32(selectedEmployee["Id"]);
-                string query = "UPDATE Employees SET FirstName = @FirstName, LastName = @LastName, Position = @Position WHERE Id = @Id";
+                string currentFirstName = selectedEmployee["FirstName"].ToString();
+                string currentLastName = selectedEmployee["LastName"].ToString();
+                string currentPosition = selectedEmployee["Position"].ToString();
 
-                var parameters = new[]
+                var editWindow = new EmployeeEditWindow(currentFirstName, currentLastName, currentPosition);
+                if (editWindow.ShowDialog() == true)
                 {
-            new System.Data.SqlClient.SqlParameter("@FirstName", "Петр"),
-            new System.Data.SqlClient.SqlParameter("@LastName", "Петров"),
-            new System.Data.SqlClient.SqlParameter("@Position", "Разработчик"),
-            new System.Data.SqlClient.SqlParameter("@Id", employeeId)
-        };
+                    string query = "UPDATE Employees SET FirstName = @FirstName, LastName = @LastName, Position = @Position WHERE Id = @Id";
+                    var parameters = new[]
+                    {
+                new SqlParameter("@FirstName", editWindow.FirstName),
+                new SqlParameter("@LastName", editWindow.LastName),
+                new SqlParameter("@Position", editWindow.Position),
+                new SqlParameter("@Id", employeeId)
+            };
 
-                _database.ExecuteNonQuery(query, parameters);
-                Logger.WriteLog($"Сотрудник с ID {employeeId} обновлен.");
+                    await _database.ExecuteNonQueryAsync(query, parameters);
+                    Logger.WriteLog($"Сотрудник с ID {employeeId} обновлен: {editWindow.FirstName} {editWindow.LastName} ({editWindow.Position})");
 
-                if (DataGridOrganizations.SelectedItem is DataRowView selectedOrganization)
-                {
-                    int organizationId = Convert.ToInt32(selectedOrganization["Id"]);
-                    LoadEmployees(organizationId);
+                    if (DataGridOrganizations.SelectedItem is DataRowView selectedOrganization)
+                    {
+                        int organizationId = Convert.ToInt32(selectedOrganization["Id"]);
+                        LoadEmployees(organizationId);
+                    }
                 }
             }
+            else
+            {
+                MessageBox.Show("Выберите сотрудника для редактирования.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
+
         private void BtnDeleteEmployee_Click(object sender, RoutedEventArgs e)
         {
             if (DataGridEmployees.SelectedItem is DataRowView selectedEmployee)
@@ -314,32 +390,37 @@ namespace PersonnelManagementSystem
                 {
                     try
                     {
-                        // Чтение файла в массив байтов
-                        byte[] photoBytes = File.ReadAllBytes(openFileDialog.FileName);
-
-                        // Получение ID сотрудника
-                        int employeeId = Convert.ToInt32(selectedEmployee["Id"]);
-
-                        // Обновление фото в базе данных
-                        string query = "UPDATE Employees SET Photo = @Photo WHERE Id = @Id";
-                        var parameters = new[]
+                        // Чтение изображения из файла
+                        using (var stream = new FileStream(openFileDialog.FileName, FileMode.Open, FileAccess.Read))
                         {
-                    new System.Data.SqlClient.SqlParameter("@Photo", photoBytes),
-                    new System.Data.SqlClient.SqlParameter("@Id", employeeId)
-                };
+                            BitmapImage originalImage = new BitmapImage();
+                            originalImage.BeginInit();
+                            originalImage.StreamSource = stream;
+                            originalImage.CacheOption = BitmapCacheOption.OnLoad;
+                            originalImage.EndInit();
 
-                        _database.ExecuteNonQuery(query, parameters);
-                        Logger.WriteLog($"Фотография сотрудника с ID {employeeId} обновлена.");
+                            // Обрезка изображения
+                            CroppedBitmap croppedImage = CropToFitAspect(originalImage, 3, 4); // Пропорции 3:4
 
-                        // Отображение загруженного фото
-                        using (MemoryStream stream = new MemoryStream(photoBytes))
-                        {
-                            BitmapImage image = new BitmapImage();
-                            image.BeginInit();
-                            image.StreamSource = stream;
-                            image.CacheOption = BitmapCacheOption.OnLoad;
-                            image.EndInit();
-                            EmployeePhoto.Source = image;
+                            // Сохранение обрезанного изображения в байтовый массив
+                            byte[] photoBytes = GetImageBytes(croppedImage);
+
+                            // Получение ID сотрудника
+                            int employeeId = Convert.ToInt32(selectedEmployee["Id"]);
+
+                            // Обновление фото в базе данных
+                            string query = "UPDATE Employees SET Photo = @Photo WHERE Id = @Id";
+                            var parameters = new[]
+                            {
+                        new System.Data.SqlClient.SqlParameter("@Photo", photoBytes),
+                        new System.Data.SqlClient.SqlParameter("@Id", employeeId)
+                    };
+
+                            _database.ExecuteNonQuery(query, parameters);
+                            Logger.WriteLog($"Фотография сотрудника с ID {employeeId} обновлена.");
+
+                            // Отображение загруженного фото
+                            EmployeePhoto.Source = croppedImage;
                         }
                     }
                     catch (Exception ex)
@@ -354,6 +435,62 @@ namespace PersonnelManagementSystem
                 MessageBox.Show("Выберите сотрудника для загрузки фото.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+
+        /// <summary>
+        /// Обрезает изображение до заданных пропорций.
+        /// </summary>
+        /// <param name="source">Исходное изображение.</param>
+        /// <param name="targetWidthRatio">Ширина пропорции.</param>
+        /// <param name="targetHeightRatio">Высота пропорции.</param>
+        /// <returns>Обрезанное изображение.</returns>
+        private CroppedBitmap CropToFitAspect(BitmapImage source, int targetWidthRatio, int targetHeightRatio)
+        {
+            double sourceWidth = source.PixelWidth;
+            double sourceHeight = source.PixelHeight;
+
+            double targetAspectRatio = (double)targetWidthRatio / targetHeightRatio;
+            double sourceAspectRatio = sourceWidth / sourceHeight;
+
+            int cropWidth, cropHeight, offsetX, offsetY;
+
+            if (sourceAspectRatio > targetAspectRatio)
+            {
+                // Изображение шире, чем нужно
+                cropHeight = (int)sourceHeight;
+                cropWidth = (int)(sourceHeight * targetAspectRatio);
+                offsetX = (int)((sourceWidth - cropWidth) / 2);
+                offsetY = 0;
+            }
+            else
+            {
+                // Изображение выше, чем нужно
+                cropWidth = (int)sourceWidth;
+                cropHeight = (int)(sourceWidth / targetAspectRatio);
+                offsetX = 0;
+                offsetY = (int)((sourceHeight - cropHeight) / 2);
+            }
+
+            // Возвращаем обрезанное изображение
+            return new CroppedBitmap(source, new Int32Rect(offsetX, offsetY, cropWidth, cropHeight));
+        }
+
+        /// <summary>
+        /// Преобразует изображение в байтовый массив.
+        /// </summary>
+        /// <param name="source">Изображение для преобразования.</param>
+        /// <returns>Байтовый массив изображения.</returns>
+        private byte[] GetImageBytes(BitmapSource source)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            {
+                BitmapEncoder encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(source));
+                encoder.Save(stream);
+                return stream.ToArray();
+            }
+        }
+
+
         private void DataGridEmployees_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (DataGridEmployees.SelectedItem is DataRowView selectedEmployee)
@@ -379,6 +516,95 @@ namespace PersonnelManagementSystem
             }
         }
 
+        private void TxtSearchEmployees_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (DataGridEmployees.ItemsSource is DataView dataView)
+            {
+                string filterText = TxtSearchEmployees.Text.ToLower();
+                dataView.RowFilter = $"Convert(Id, 'System.String') LIKE '%{filterText}%' OR FirstName LIKE '%{filterText}%' OR LastName LIKE '%{filterText}%' OR Position LIKE '%{filterText}%'";
+            }
+        }
 
+
+
+        private async void BtnStressTest_Click(object sender, RoutedEventArgs e)
+        {
+            StressTestLog.Clear(); // Очистить лог перед запуском
+            string startMessage = "Начало стресс-теста...";
+            StressTestLog.AppendText(startMessage + "\n");
+            Logger.WriteLog(startMessage);
+
+            for (int i = 1; i <= 10; i++) // 10 организаций
+            {
+                string orgName = $"Организация {i}";
+                string orgAddress = $"Адрес {i}";
+                string orgPhone = $"123-456-78{i:D2}";
+
+                // SQL-запрос с OUTPUT INSERTED.Id для получения сгенерированного ID
+                string insertOrgQuery = "INSERT INTO Organizations (Name, Address, Phone) OUTPUT INSERTED.Id VALUES (@Name, @Address, @Phone)";
+                var orgParams = new[]
+                {
+            new SqlParameter("@Name", orgName),
+            new SqlParameter("@Address", orgAddress),
+            new SqlParameter("@Phone", orgPhone),
+        };
+
+                try
+                {
+                    // Получаем ID новой организации
+                    int organizationId = (int)await _database.ExecuteScalarAsync(insertOrgQuery, orgParams);
+
+                    string orgAddedMessage = $"Добавлена организация: {orgName}";
+                    StressTestLog.AppendText(orgAddedMessage + "\n");
+                    Logger.WriteLog(orgAddedMessage);
+
+                    for (int j = 1; j <= 100; j++) // 100 сотрудников
+                    {
+                        string empName = $"Имя {j}";
+                        string empLastName = $"Фамилия {j}";
+                        string empPosition = "Сотрудник";
+
+                        string insertEmpQuery = "INSERT INTO Employees (OrganizationId, FirstName, LastName, Position) VALUES (@OrgId, @FirstName, @LastName, @Position)";
+                        var empParams = new[]
+                        {
+                    new SqlParameter("@OrgId", organizationId),
+                    new SqlParameter("@FirstName", empName),
+                    new SqlParameter("@LastName", empLastName),
+                    new SqlParameter("@Position", empPosition),
+                };
+
+                        await _database.ExecuteNonQueryAsync(insertEmpQuery, empParams);
+                    }
+
+                    string employeesAddedMessage = $"Добавлены 100 сотрудников для организации {orgName}";
+                    StressTestLog.AppendText(employeesAddedMessage + "\n");
+                    Logger.WriteLog(employeesAddedMessage);
+                }
+                catch (Exception ex)
+                {
+                    string errorMessage = $"Ошибка при добавлении организации {orgName}: {ex.Message}";
+                    StressTestLog.AppendText(errorMessage + "\n");
+                    Logger.WriteLog(errorMessage);
+                }
+
+                // Прокрутить лог вниз
+                StressTestLog.ScrollToEnd();
+            }
+
+            string finishMessage = "Стресс-тест завершён.";
+            StressTestLog.AppendText(finishMessage + "\n");
+            Logger.WriteLog(finishMessage);
+        }
+
+
+        private void StressTestLog_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
+
+        private void TxtSearchOrganizations_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 }

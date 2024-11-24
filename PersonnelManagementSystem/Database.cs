@@ -99,4 +99,25 @@ public class Database
             }
         }
     }
+
+    /// <summary>
+    /// Выполняет SQL-запрос и возвращает первый столбец первой строки результата.
+    /// </summary>
+    public async Task<object> ExecuteScalarAsync(string query, SqlParameter[] parameters = null)
+    {
+        using (SqlConnection connection = new SqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            using (SqlCommand command = new SqlCommand(query, connection))
+            {
+                if (parameters != null)
+                {
+                    command.Parameters.AddRange(parameters);
+                }
+
+                return await command.ExecuteScalarAsync();
+            }
+        }
+    }
+
 }

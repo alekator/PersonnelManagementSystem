@@ -1,10 +1,10 @@
 ﻿<Window x:Class="PersonnelManagementSystem.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Personnel Management System" Height="700" Width="900">
+        Title="Personnel Management System" Height="700" Width="1000">
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Верхняя панель с кнопкой -->
+            <!-- Верхняя панель с кнопками -->
             <RowDefinition Height="Auto"/>
             <!-- Основной контент -->
             <RowDefinition Height="*"/>
@@ -12,77 +12,108 @@
 
         <!-- Верхняя панель -->
         <DockPanel Grid.Row="0" Margin="10">
+            <!-- Кнопка обновления состояния -->
+            <Button x:Name="BtnRefresh" Content="Обновить данные" Click="BtnRefresh_Click" Width="200" Height="30" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Left" Margin="0,0,10,0"/>
             <!-- Кнопка подключения к БД -->
             <Button x:Name="BtnSettings" Content="Настройки подключения" Click="BtnSettings_Click" Width="200" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" DockPanel.Dock="Right"/>
         </DockPanel>
 
         <!-- Основной контент -->
         <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4*"/>
+                <!-- Список организаций и сотрудников -->
+                <ColumnDefinition Width="2*"/>
+                <!-- Стресс-тест и фото -->
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <!-- Верхняя часть -->
+                <RowDefinition Height="*"/>
+                <!-- Нижняя часть -->
             </Grid.RowDefinitions>
 
             <!-- Верхняя часть: Организации -->
-            <Grid Grid.Row="0">
+            <Grid Grid.Row="0" Grid.Column="0">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="Список организаций:" FontWeight="Bold" Margin="0,0,0,10" Grid.Row="0"/>
-                <DataGrid x:Name="DataGridOrganizations" AutoGenerateColumns="False" Margin="0,0,0,10" Grid.Row="1" SelectionChanged="DataGridOrganizations_SelectionChanged">
+                <TextBlock FontWeight="Bold" Margin="0,0,0,5" Grid.Row="0"><Run Text="Список организаций:"/><Run Text="                                                                                                                   "/><Run Language="ru-ru" Text="  "/><Run Text="Вводите для поиска"/></TextBlock>
+                <!-- Поле поиска организаций -->
+                <TextBox x:Name="TxtSearchOrganizations" Margin="137,0,147,17" KeyUp="TxtSearchOrganizations_KeyUp" TextChanged="TxtSearchOrganizations_TextChanged" Background="LightGray" Foreground="Black"/>
+
+                <DataGrid x:Name="DataGridOrganizations" AutoGenerateColumns="False" Margin="0,0,0,10" Grid.Row="2" SelectionChanged="DataGridOrganizations_SelectionChanged">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                        <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="200"/>
+                        <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="*"/>
                         <DataGridTextColumn Header="Адрес" Binding="{Binding Address}" Width="200"/>
                         <DataGridTextColumn Header="Телефон" Binding="{Binding Phone}" Width="150"/>
                     </DataGrid.Columns>
                 </DataGrid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0" Grid.Row="2">
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Grid.Row="3">
                     <Button x:Name="BtnAddOrganization" Content="Добавить организацию" Click="BtnAddOrganization_Click" Width="150" Margin="10"/>
                     <Button x:Name="BtnEditOrganization" Content="Редактировать" Click="BtnEditOrganization_Click" Width="150" Margin="10"/>
                     <Button x:Name="BtnDeleteOrganization" Content="Удалить" Click="BtnDeleteOrganization_Click" Width="150" Margin="10"/>
                 </StackPanel>
             </Grid>
 
-            <!-- Нижняя часть: Сотрудники и Фото -->
-            <Grid Grid.Row="1" Margin="0,20,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
+            <!-- Нижняя часть: Сотрудники -->
+            <Grid Grid.Row="1" Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <!-- Сотрудники -->
-                <Grid Grid.Column="0" Margin="0,0,10,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                <TextBlock FontWeight="Bold" Margin="0,0,0,5" Grid.Row="0"><Run Text="Список сотрудников:"/><Run Text="                                                                                                                     Вводите для поиска"/></TextBlock>
+                <!-- Поле поиска сотрудников -->
+                <TextBox x:Name="TxtSearchEmployees" Margin="137,0,147,17" KeyUp="TxtSearchEmployees_KeyUp" Background="LightGray" Foreground="Black"/>
 
-                    <TextBlock Text="Список сотрудников:" FontWeight="Bold" Margin="0,0,0,10" Grid.Row="0"/>
-                    <DataGrid x:Name="DataGridEmployees" AutoGenerateColumns="False" Margin="0,0,0,10" Grid.Row="1" SelectionChanged="DataGridEmployees_SelectionChanged">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                            <DataGridTextColumn Header="Имя" Binding="{Binding FirstName}" Width="150"/>
-                            <DataGridTextColumn Header="Фамилия" Binding="{Binding LastName}" Width="150"/>
-                            <DataGridTextColumn Header="Должность" Binding="{Binding Position}" Width="150"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0" Grid.Row="2">
-                        <Button x:Name="BtnAddEmployee" Content="Добавить сотрудника" Click="BtnAddEmployee_Click" Width="150" Margin="10"/>
-                        <Button x:Name="BtnEditEmployee" Content="Редактировать" Click="BtnEditEmployee_Click" Width="150" Margin="10"/>
-                        <Button x:Name="BtnDeleteEmployee" Content="Удалить" Click="BtnDeleteEmployee_Click" Width="150" Margin="10"/>
-                    </StackPanel>
-                </Grid>
+                <DataGrid x:Name="DataGridEmployees" AutoGenerateColumns="False" Margin="0,0,0,10" Grid.Row="2" SelectionChanged="DataGridEmployees_SelectionChanged">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+                        <DataGridTextColumn Header="Имя" Binding="{Binding FirstName}" Width="150"/>
+                        <DataGridTextColumn Header="Фамилия" Binding="{Binding LastName}" Width="150"/>
+                        <DataGridTextColumn Header="Должность" Binding="{Binding Position}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Grid.Row="3">
+                    <Button x:Name="BtnAddEmployee" Content="Добавить сотрудника" Click="BtnAddEmployee_Click" Width="150" Margin="10"/>
+                    <Button x:Name="BtnEditEmployee" Content="Редактировать" Click="BtnEditEmployee_Click" Width="150" Margin="10"/>
+                    <Button x:Name="BtnDeleteEmployee" Content="Удалить" Click="BtnDeleteEmployee_Click" Width="150" Margin="10"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Правая часть: Стресс-тест и фото -->
+            <Grid Grid.RowSpan="2" Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Лог стресс-теста -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Фото сотрудника -->
+                </Grid.RowDefinitions>
+
+                <!-- Лог стресс-теста -->
+                <StackPanel Margin="10" Grid.Row="0" HorizontalAlignment="Center">
+                    <TextBlock Text="Лог стресс-теста:" FontWeight="Bold" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="StressTestLog" Width="250" Height="200" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" TextChanged="StressTestLog_TextChanged"/>
+                    <Button x:Name="BtnStressTest" Content="Стресс-тест" Click="BtnStressTest_Click" Width="150" Height="30" Margin="0,5,0,0"/>
+                </StackPanel>
 
                 <!-- Фотография сотрудника -->
-                <StackPanel Orientation="Vertical" Grid.Column="1" HorizontalAlignment="Center">
-                    <TextBlock Text="Фотография сотрудника:" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <Image x:Name="EmployeePhoto" Width="200" Height="200" Stretch="Uniform" Margin="0,0,0,10"/>
-                    <Button x:Name="BtnUploadPhoto" Content="Загрузить фото" Click="BtnUploadPhoto_Click" Width="150" Margin="10"/>
+                <StackPanel Margin="10" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="Фотография сотрудника:" FontWeight="Bold" HorizontalAlignment="Center" Height="25"/>
+                    <Border Width="180" Height="240" BorderBrush="Black" BorderThickness="2">
+                        <Image x:Name="EmployeePhoto" Stretch="UniformToFill" ClipToBounds="True"/>
+                    </Border>
+                    <Button x:Name="BtnUploadPhoto" Content="Загрузить фото" Click="BtnUploadPhoto_Click" Width="150" Height="30" Margin="0,10,0,0"/>
                 </StackPanel>
             </Grid>
         </Grid>
